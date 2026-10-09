@@ -68,7 +68,6 @@ export default async function handler(req: any, res: any) {
     const {
       prompt,
       aspectRatio = "16:9",
-      model = "gemini-2.5-flash",
       referenceImages,
       referenceImage,
     } = body;
@@ -93,7 +92,8 @@ export default async function handler(req: any, res: any) {
       apiKey,
     });
 
-    const modelToUse = model || "gemini-2.5-flash";
+    // Paksa menggunakan model yang aktif untuk menghindari kuota model lama
+    const modelToUse = "gemini-2.5-flash";
     const imageConfig: { aspectRatio: string; imageSize?: string } = {
       aspectRatio: aspectRatio || "16:9",
     };

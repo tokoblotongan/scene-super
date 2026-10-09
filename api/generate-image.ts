@@ -88,20 +88,9 @@ export default async function handler(req: any, res: any) {
     // Clean leading/trailing quotes and whitespace
     const apiKey = rawKey.replace(/^["']|["']$/g, "").trim();
 
-    // Prepare headers to support both classic AIzaSy keys and new AQ. / OAuth Bearer tokens
-    const headers: Record<string, string> = {
-      "User-Agent": "aistudio-build",
-    };
-
-    if (apiKey.startsWith("AQ.") || apiKey.startsWith("ya29.")) {
-      headers["Authorization"] = `Bearer ${apiKey}`;
-    }
-
+    // Inisialisasi GoogleGenAI secara bersih tanpa header Authorization Bearer yang memicu error
     const ai = new GoogleGenAI({
       apiKey,
-      httpOptions: {
-        headers,
-      },
     });
 
     const modelToUse = model || "gemini-3.1-flash-lite-image";

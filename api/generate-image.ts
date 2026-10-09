@@ -7,13 +7,8 @@ export default async function handler(req: any, res: any) {
     "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
   );
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed." });
-  }
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed." });
 
   try {
     let body = req.body;
@@ -27,22 +22,20 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: "Prompt is required." });
     }
 
-    // Mengambil API Key AI Horde (jika tidak ada, gunakan anonymous key "0000000000")
     const rawApiKey = process.env.HORDE_API_KEY || "0000000000";
     const apiKey = rawApiKey.replace(/^["']|["']$/g, "").trim();
 
-    // Menentukan resolusi berdasarkan aspectRatio
-    let width = 1024;
-    let height = 576; // 16:9
+    // Menyesuaikan resolusi yang lebih ringan agar worker cepat merespons
+    let width = 896;
+    let height = 512;
     if (aspectRatio === "1:1") {
-      width = 1024;
-      height = 1024;
+      width = 512;
+      height = 512;
     } else if (aspectRatio === "9:16") {
-      width = 576;
-      height = 1024;
+      width = 512;
+      height = 896;
     }
 
-    // Memproses gambar referensi wajah jika ada
     let sourceImageBase64: string | null = null;
     const targetImg = referenceImages?.[0] || referenceImage;
     if (targetImg) {
@@ -52,28 +45,27 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // 1. Kirim Permintaan (Async Generation) ke AI Horde
     const hordePayload: any = {
       prompt: prompt.trim(),
       params: {
         width,
         height,
-        steps: 30,
-        sampler_name: "k_euler",
-        cfg_scale: 7.5,
+        steps: 20,
+        sampler_name: "k_euler_a",
+        cfg_scale: 7.0,
       },
-      models: ["SDXL Lightning", "Juggernaut XL", "Stable Diffusion XL"],
+      models: ["SDXL_Lightning"],
       nsfw: false,
       trusted_workers: false,
     };
 
-    // Jika ada gambar referensi untuk karakter/wajah, masukkan ke source_image AI Horde
     if (sourceImageBase64) {
       hordePayload.source_image = sourceImageBase64;
       hordePayload.source_processing = "img2img";
-      hordePayload.strength = 0.55; // Menjaga konsistensi wajah dari referensi
+      hordePayload.strength = 0.6;
     }
 
+    // Mengirim permintaan generasi asinkron ke AI Horde
     const postResponse = await fetch("https://stablehorde.net/api/v2/generate/text2image", {
       method: "POST",
       headers: {
@@ -96,55 +88,17 @@ export default async function handler(req: any, res: any) {
       throw new Error("Gagal mendapatkan ID antrian dari AI Horde.");
     }
 
-    // 2. Polling (Menunggu worker AI Horde memproses gambar, maksimal 20 kali percobaan)
-    let imageUrl: string | null = null;
-    let attempts = 0;
-    const maxAttempts = 25;
-
-    while (attempts < maxAttempts) {
-      await new Promise((resolve) => setTimeout(resolve, 3000)); // Jeda 3 detik per cek
-      attempts++;
-
-      const checkResponse = await fetch(`https://stablehorde.net/api/v2/generate/check/${generationId}`);
-      if (!checkResponse.ok) continue;
-
-      const checkData = await checkResponse.json();
-
-      if (checkData.done) {
-        // Selesai! Ambil hasil gambar
-        const statusResponse = await fetch(`https://stablehorde.net/api/v2/generate/status/${generationId}`);
-        if (statusResponse.ok) {
-          const statusData = await statusResponse.json();
-          if (statusData.generations && statusData.generations.length > 0) {
-            const gen = statusData.generations[0];
-            if (gen.img && !gen.censored) {
-              imageUrl = gen.img.startsWith("data:") ? gen.img : `data:image/webp;base64,${gen.img}`;
-            }
-          }
-        }
-        break;
-      }
-
-      if (checkData.faulted) {
-        throw new Error("Proses generasi gambar dibatalkan/gagal oleh worker AI Horde.");
-      }
-    }
-
-    if (!imageUrl) {
-      return res.status(504).json({
-        error: "Waktu tunggu habis (Timeout). Antrian AI Horde sedang sibuk, silakan klik 'Coba Lagi'.",
-      });
-    }
-
+    // Segera kembalikan ID antrean ke frontend agar tidak terjadi timeout di Vercel
     return res.status(200).json({
-      imageUrl,
-      modelUsed: "AI Horde (SDXL)",
+      success: true,
+      generationId,
+      message: "Tugas berhasil dimasukkan ke antrean AI Horde."
     });
 
   } catch (error: any) {
     console.error("Error AI Horde:", error);
     return res.status(500).json({
-      error: "Gagal menghasilkan gambar via AI Horde.",
+      error: "Gagal memproses antrean gambar.",
       details: error?.toString(),
     });
   }

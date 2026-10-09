@@ -68,7 +68,7 @@ export default async function handler(req: any, res: any) {
     const {
       prompt,
       aspectRatio = "16:9",
-      model = "gemini-3.1-flash-lite-image",
+      model = "gemini-2.5-flash",
       referenceImages,
       referenceImage,
     } = body;
@@ -88,12 +88,12 @@ export default async function handler(req: any, res: any) {
     // Clean leading/trailing quotes and whitespace
     const apiKey = rawKey.replace(/^["']|["']$/g, "").trim();
 
-    // Inisialisasi GoogleGenAI secara bersih tanpa header Authorization Bearer yang memicu error
+    // Inisialisasi GoogleGenAI secara bersih
     const ai = new GoogleGenAI({
       apiKey,
     });
 
-    const modelToUse = model || "gemini-3.1-flash-lite-image";
+    const modelToUse = model || "gemini-2.5-flash";
     const imageConfig: { aspectRatio: string; imageSize?: string } = {
       aspectRatio: aspectRatio || "16:9",
     };

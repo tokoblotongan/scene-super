@@ -37,6 +37,35 @@ const DEFAULT_SETTINGS: StoryboardSettings = {
   concurrency: 1,
 };
 
+// Safe fetch JSON parser with friendly error reporting
+async function safeFetchJson<T = any>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, init);
+  const text = await res.text();
+  let data: any;
+
+  try {
+    data = JSON.parse(text);
+  } catch {
+    if (res.status === 404) {
+      throw new Error(
+        'Endpoint API tidak ditemukan (404). Pastikan file vercel.json dan /api/index.ts sudah di-push ke GitHub serta GEMINI_API_KEY sudah diisi di Vercel Environment Variables.'
+      );
+    }
+    if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+      throw new Error(
+        `Server Vercel mengembalikan halaman web HTML (Status ${res.status}). Pastikan GEMINI_API_KEY sudah ditambahkan di Vercel Dashboard > Settings > Environment Variables dan lakukan Redeploy.`
+      );
+    }
+    throw new Error(`Respon server tidak valid (${res.status}): ${text.slice(0, 80)}`);
+  }
+
+  if (!res.ok) {
+    throw new Error(data.error || `Request gagal dengan status ${res.status}`);
+  }
+
+  return data;
+}
+
 export default function App() {
   // Initialize with the 10-scene Space Cat preset
   const [scenes, setScenes] = useState<SceneItem[]>(() => {
@@ -139,7 +168,7 @@ export default function App() {
         refImages.push({ data: settings.globalReferenceImage });
       }
 
-      const res = await fetch('/api/generate-image', {
+      const data = await safeFetchJson('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -149,11 +178,6 @@ export default function App() {
           referenceImages: refImages,
         }),
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Gagal menghasilkan gambar.');
-      }
 
       setScenes((prev) =>
         prev.map((s) =>
@@ -228,7 +252,7 @@ export default function App() {
             refImages.push({ data: settings.globalReferenceImage });
           }
 
-          const res = await fetch('/api/generate-image', {
+          const data = await safeFetchJson('/api/generate-image', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -238,11 +262,6 @@ export default function App() {
               referenceImages: refImages,
             }),
           });
-
-          const data = await res.json();
-          if (!res.ok) {
-            throw new Error(data.error || 'Gagal memproses gambar.');
-          }
 
           setScenes((prev) =>
             prev.map((s) =>
@@ -304,7 +323,7 @@ export default function App() {
 
     try {
       const selectedStyle = STYLE_PRESETS.find((p) => p.id === settings.stylePreset)?.name;
-      const res = await fetch('/api/enhance-prompt', {
+      const data = await safeFetchJson('/api/enhance-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -315,11 +334,6 @@ export default function App() {
           lighting: targetScene.lighting,
         }),
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Gagal memoles prompt.');
-      }
 
       setScenes((prev) =>
         prev.map((s) =>

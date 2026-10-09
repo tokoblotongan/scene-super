@@ -322,27 +322,31 @@ Output ONLY the enhanced prompt as plain text. Do not add markdown quotes, pream
   }
 });
 
-// Express + Vite Integration
-const isDev = process.env.NODE_ENV !== "production";
-const PORT = Number(process.env.PORT) || 3000;
+// Express + Vite Integration (skipped on Vercel Serverless Function)
+if (!process.env.VERCEL) {
+  const isDev = process.env.NODE_ENV !== "production";
+  const PORT = Number(process.env.PORT) || 3000;
 
-if (isDev) {
-  const { createServer: createViteServer } = await import("vite");
-  const vite = await createViteServer({
-    server: {
-      middlewareMode: true,
-      hmr: false,
-    },
-    appType: "spa",
-  });
-  app.use(vite.middlewares);
-} else {
-  app.use(express.static(path.join(__dirname, "dist")));
-  app.get("*", (_req, res) => {
-    res.sendFile(path.join(__dirname, "dist", "index.html"));
+  if (isDev) {
+    const { createServer: createViteServer } = await import("vite");
+    const vite = await createViteServer({
+      server: {
+        middlewareMode: true,
+        hmr: false,
+      },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    app.use(express.static(path.join(__dirname, "dist")));
+    app.get("*", (_req, res) => {
+      res.sendFile(path.join(__dirname, "dist", "index.html"));
+    });
+  }
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Multi-Scene Batch Image Studio server listening on port ${PORT}`);
   });
 }
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Multi-Scene Batch Image Studio server listening on port ${PORT}`);
-});
+export default app;

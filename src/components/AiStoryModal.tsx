@@ -81,7 +81,17 @@ export const AiStoryModal: React.FC<AiStoryModalProps> = ({
         }),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data: any;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+          throw new Error('Server mengembalikan halaman web HTML bukannya data JSON. Pastikan GEMINI_API_KEY sudah disetel di Vercel Environment Variables.');
+        }
+        throw new Error(`Respon server tidak valid: ${text.slice(0, 80)}`);
+      }
+
       if (!res.ok) {
         throw new Error(data.error || 'Gagal memproses cerita dengan AI.');
       }

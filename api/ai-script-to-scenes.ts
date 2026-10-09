@@ -77,20 +77,30 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: "Story or prompt description is required." });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    const rawKey = process.env.GEMINI_API_KEY;
+    if (!rawKey) {
       return res.status(500).json({
         error:
           "GEMINI_API_KEY tidak ditemukan di environment variables. Pastikan GEMINI_API_KEY sudah disetel di Vercel Dashboard (Settings > Environment Variables) dan lakukan Redeploy.",
       });
     }
 
+    // Clean leading/trailing quotes and whitespace
+    const apiKey = rawKey.replace(/^["']|["']$/g, "").trim();
+
+    // Prepare headers to support both classic AIzaSy keys and new AQ. / OAuth Bearer tokens
+    const headers: Record<string, string> = {
+      "User-Agent": "aistudio-build",
+    };
+
+    if (apiKey.startsWith("AQ.") || apiKey.startsWith("ya29.")) {
+      headers["Authorization"] = `Bearer ${apiKey}`;
+    }
+
     const ai = new GoogleGenAI({
       apiKey,
       httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
+        headers,
       },
     });
 

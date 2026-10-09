@@ -12,69 +12,36 @@ export default async function handler(req: any, res: any) {
   }
 
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed. Gunakan method POST." });
+    return res.status(405).json({ error: "Method Not Allowed." });
   }
 
   try {
     let body = req.body;
     if (typeof body === "string") {
-      try {
-        body = JSON.parse(body);
-      } catch {
-        return res.status(400).json({ error: "Body JSON tidak valid." });
-      }
+      try { body = JSON.parse(body); } catch {}
     }
     body = body || {};
 
-    const {
-      prompt,
-      aspectRatio = "16:9",
-      referenceImages,
-      referenceImage,
-    } = body;
-
+    const { prompt } = body;
     if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
       return res.status(400).json({ error: "Prompt is required." });
     }
 
     const rawToken = process.env.HF_TOKEN;
     if (!rawToken) {
-      return res.status(500).json({
-        error: "HF_TOKEN tidak ditemukan di environment variables Vercel.",
-      });
+      return res.status(500).json({ error: "HF_TOKEN tidak ditemukan di Vercel." });
     }
 
     const hfToken = rawToken.replace(/^["']|["']$/g, "").trim();
     const modelId = "black-forest-labs/FLUX.1-schnell";
     const hfApiUrl = `https://api-inference.huggingface.co/models/${modelId}`;
 
-    let finalPrompt = prompt.trim();
-    const targetImage = referenceImages?.[0] || referenceImage;
-    if (targetImage) {
-      finalPrompt = `Cinematic style, detailed scene: ${finalPrompt}`;
-    }
-
-    // Menyesuaikan ukuran berdasarkan aspectRatio
-    let width = 1024;
-    let height = 576; // Default 16:9
-    if (aspectRatio === "1:1") {
-      width = 1024;
-      height = 1024;
-    } else if (aspectRatio === "9:16") {
-      width = 576;
-      height = 1024;
-    }
-
+    // Payload murni standar Hugging Face Inference API
     const payload = {
-      inputs: finalPrompt,
-      parameters: {
-        width,
-        height,
-        num_inference_steps: 4, // Optimal untuk Flux.1-schnell
-      },
+      inputs: prompt.trim(),
       options: {
         wait_for_model: true,
-      },
+      }
     };
 
     const hfResponse = await fetch(hfApiUrl, {
@@ -90,18 +57,13 @@ export default async function handler(req: any, res: any) {
       const errText = await hfResponse.text();
       let errorDetail = errText;
       try {
-        const parsedErr = JSON.parse(errText);
-        if (parsedErr.error) errorDetail = parsedErr.error;
+        const parsed = JSON.parse(errText);
+        if (parsed.error) errorDetail = parsed.error;
       } catch {}
 
-      if (hfResponse.status === 503) {
-        return res.status(503).json({
-          error: "Model Hugging Face sedang dimuat (Cold Start). Silakan klik tombol 'Coba Lagi' dalam beberapa detik.",
-          details: errorDetail,
-        });
-      }
-
-      throw new Error(`Hugging Face API Error (${hfResponse.status}): ${errorDetail}`);
+      return res.status(hfResponse.status).json({
+        error: `Hugging Face Error: ${errorDetail}`,
+      });
     }
 
     const arrayBuffer = await hfResponse.arrayBuffer();
@@ -115,9 +77,8 @@ export default async function handler(req: any, res: any) {
       modelUsed: modelId,
     });
   } catch (error: any) {
-    console.error("Error generating image with Hugging Face:", error);
     return res.status(500).json({
-      error: "Gagal menghasilkan gambar via Hugging Face.",
+      error: "Gagal memproses permintaan.",
       details: error?.toString(),
     });
   }

@@ -1,5 +1,4 @@
 export default async function handler(req: any, res: any) {
-  // CORS Headers
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT");
@@ -41,41 +40,38 @@ export default async function handler(req: any, res: any) {
     const rawToken = process.env.HF_TOKEN;
     if (!rawToken) {
       return res.status(500).json({
-        error: "HF_TOKEN tidak ditemukan di environment variables Vercel. Tambahkan HF_TOKEN di Settings > Environment Variables.",
+        error: "HF_TOKEN tidak ditemukan di environment variables Vercel.",
       });
     }
 
     const hfToken = rawToken.replace(/^["']|["']$/g, "").trim();
-
-    // Pilih model Hugging Face (menggunakan Flux.1-schnell yang cepat dan gratis via Inference API)
     const modelId = "black-forest-labs/FLUX.1-schnell";
     const hfApiUrl = `https://api-inference.huggingface.co/models/${modelId}`;
 
     let finalPrompt = prompt.trim();
-    
-    // Jika ada gambar referensi, kita gabungkan keterangannya ke prompt agar model menyesuaikan
-    let referenceImageData: string | null = null;
     const targetImage = referenceImages?.[0] || referenceImage;
     if (targetImage) {
-      let base64 = typeof targetImage === "string" ? targetImage : targetImage.data;
-      if (base64) {
-        if (base64.startsWith("data:")) {
-          const match = base64.match(/^data:([^;]+);base64,(.+)$/);
-          if (match) {
-            referenceImageData = match[2];
-          } else {
-            referenceImageData = base64.split(",")[1] || base64;
-          }
-        } else {
-          referenceImageData = base64;
-        }
-        finalPrompt = `Character consistency style, detailed scene: ${finalPrompt}`;
-      }
+      finalPrompt = `Cinematic style, detailed scene: ${finalPrompt}`;
     }
 
-    // Payload standar untuk Hugging Face Inference API
-    const payload: any = {
+    // Menyesuaikan ukuran berdasarkan aspectRatio
+    let width = 1024;
+    let height = 576; // Default 16:9
+    if (aspectRatio === "1:1") {
+      width = 1024;
+      height = 1024;
+    } else if (aspectRatio === "9:16") {
+      width = 576;
+      height = 1024;
+    }
+
+    const payload = {
       inputs: finalPrompt,
+      parameters: {
+        width,
+        height,
+        num_inference_steps: 4, // Optimal untuk Flux.1-schnell
+      },
       options: {
         wait_for_model: true,
       },
@@ -108,7 +104,6 @@ export default async function handler(req: any, res: any) {
       throw new Error(`Hugging Face API Error (${hfResponse.status}): ${errorDetail}`);
     }
 
-    // Hugging Face mengembalikan binary gambar (image/jpeg atau image/png)
     const arrayBuffer = await hfResponse.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const base64Image = buffer.toString("base64");

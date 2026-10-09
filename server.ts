@@ -1,10 +1,24 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import app from "./src/server/app";
+import generateImageHandler from "./api/generate-image";
+import aiScriptToScenesHandler from "./api/ai-script-to-scenes";
+import enhancePromptHandler from "./api/enhance-prompt";
+import statusHandler from "./api/status";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const app = express();
+
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
+// Mount the exact same API handlers as Vercel serverless functions
+app.all("/api/generate-image", (req, res) => generateImageHandler(req, res));
+app.all("/api/ai-script-to-scenes", (req, res) => aiScriptToScenesHandler(req, res));
+app.all("/api/enhance-prompt", (req, res) => enhancePromptHandler(req, res));
+app.all("/api/status", (req, res) => statusHandler(req, res));
 
 // Express + Vite Integration (for dev and standalone production server)
 const isDev = process.env.NODE_ENV !== "production";

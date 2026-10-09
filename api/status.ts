@@ -1,4 +1,5 @@
 export default function handler(req: any, res: any) {
+  // CORS Headers
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
@@ -12,14 +13,9 @@ export default function handler(req: any, res: any) {
   }
 
   return res.status(200).json({
-    status: "ok",
-    message: "Multi-Scene Batch AI Image Studio API is operational",
-    endpoints: [
-      "/api/generate-image",
-      "/api/ai-script-to-scenes",
-      "/api/enhance-prompt",
-      "/api/status",
-    ],
     hasApiKey: !!process.env.GEMINI_API_KEY,
+    status: "ok",
+    environment: process.env.VERCEL ? "vercel" : "standalone",
+    defaultModel: "gemini-3.1-flash-lite-image",
   });
 }

@@ -92,8 +92,8 @@ export default async function handler(req: any, res: any) {
       apiKey,
     });
 
-    // Paksa menggunakan model yang aktif untuk menghindari kuota model lama
-    const modelToUse = "gemini-2.5-flash";
+    // Gunakan model terbaru yang aktif untuk menghindari error deprecated
+    const modelToUse = "gemini-3.1-flash-lite-image";
     const imageConfig: { aspectRatio: string; imageSize?: string } = {
       aspectRatio: aspectRatio || "16:9",
     };

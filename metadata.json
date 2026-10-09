@@ -1,0 +1,6 @@
+{
+  "name": "Multi-Scene Batch AI Image Studio",
+  "description": "Generate multiple scene images in batch from Scene 1 to Scene 10 with unique prompts, consistent styles, and storyboard script expander.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

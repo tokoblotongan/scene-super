@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multi-Scene Batch AI Image Studio</title>
+    <meta name="description" content="Generate multiple scene images in batch from Scene 1 to Scene 10 with unique prompts, consistent styles, and storyboard script expander." />
+    <meta property="og:title" content="Multi-Scene Batch AI Image Studio" />
+    <meta property="og:description" content="Generate multiple scene images in batch from Scene 1 to Scene 10 with unique prompts, consistent styles, and storyboard script expander." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      // Ignore benign WebSocket/HMR errors since HMR is disabled in this environment
+      window.addEventListener('error', function(e) {
+        if (e.message && (e.message.includes('WebSocket') || e.message.includes('createWebSocketModuleRunnerTransport'))) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        if (e.reason && String(e.reason).includes('WebSocket')) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
